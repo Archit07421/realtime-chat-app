@@ -4,6 +4,8 @@ const {join} = require("node:path");
 const {Server} = require("socket.io");
 const connectDB = require("./db");
 const Message = require("./models/message");
+const  mongoose = require("mongoose");
+
 
 const app = express();
 const server = createServer(app);
@@ -42,24 +44,47 @@ io.on('connection', (socket) => {
 
     })
 
+    
+
     socket.on("recover messages", async (lastMessageId) => {
       try {
-        let messages;
+        let query = {};
     
         if (lastMessageId) {
-          messages = await Message.find({
-            _id: { $gt: lastMessageId }
-          }).sort({ createdAt: 1 });
-        } else {
-        
-          messages = await Message.find()
-            .sort({ createdAt: 1 });
+          query._id = {
+            $gt: new mongoose.Types.ObjectId(lastMessageId)
+          };
         }
     
-        socket.emit("missed messages", messages);
+        const messages = await Message.find(query)
+          .sort({ _id: 1 })   
+          .limit(5);         
+    
+        socket.emit("missed messages", messages); 
     
       } catch (err) {
         console.error("Recovery error:", err);
+      }
+    });
+
+    socket.on("older messages", async (oldestMessagedId) => {
+      try {
+        let query = {};
+    
+        if (oldestMessagedId) {
+          query._id = {
+            $lt: new mongoose.Types.ObjectId(oldestMessagedId)
+          };
+        }
+    
+        const messages = await Message.find(query)
+          .sort({ _id: -1 })   
+          .limit(5);         
+    
+        socket.emit("older messages", messages.reverse()); 
+    
+      } catch (err) {
+        console.error("older message error:", err);
       }
     });
   

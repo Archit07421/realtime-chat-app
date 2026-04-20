@@ -62,17 +62,20 @@
     <ul id="messages"></ul>
     <form id="form" action="">
       <input id="input" autocomplete="off" />
-      <button>Send</button>
+      <button type="submit">Send</button>
+      <button type="button" id="loadMore">Load Older Messages</button>
     </form>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const socket = io();
       let lastMessageId = null;
+      let oldestMessageId = null;
 
       const form = document.getElementById("form");
       const input = document.getElementById("input");
       const messages = document.getElementById("messages");
+      const loadMore = document.getElementById("loadMore");
 
       form.addEventListener("submit", (e) => {
         e.preventDefault();
@@ -81,29 +84,60 @@
           input.value = "";
         }
       });
+
+      
       socket.on("chat message", (msg) => {
         const item = document.createElement("li");
         item.textContent = `${msg.socketId}: ${msg.contents}`;
         messages.appendChild(item);
         lastMessageId = msg._id;
+        if (!oldestMessageId) {
+          oldestMessageId = msg._id;
+        }
         window.scrollTo(0, document.body.scrollHeight);
       });
 
       socket.on("connect", () => {
-        socket.emit("recover messages", lastMessageId);
+        if(!socket.recovered){
+          socket.emit("recover messages", lastMessageId);
+        }
+        
+      });
+
+      loadMore.addEventListener("click", () => {
+        socket.emit("older messages", oldestMessageId);
       });
 
       socket.on("missed messages", (msgs) => {
-        messages.innerHTML = "";
-
         msgs.forEach((msg) => {
           const item = document.createElement("li");
-          item.textContent = `${msg.socketId}: ${msg.content}`;
+          item.textContent = `${msg.socketId}: ${msg.contents}`;
           messages.appendChild(item);
-
           lastMessageId = msg._id;
         });
+
+        if (msgs.length > 0) {
+          if (!oldestMessageId) {
+            oldestMessageId = msgs[0]._id;
+          }
+          lastMessageId = msgs[msgs.length - 1]._id;
+        }
       });
+
+      socket.on("older messages", (msgs) => {
+        for (let i = msgs.length - 1; i >= 0; i -= 1) {
+          const msg = msgs[i];
+          const item = document.createElement("li");
+          item.textContent = `${msg.socketId}: ${msg.contents}`;
+          messages.prepend(item);
+        }
+
+        if (msgs.length > 0) {
+          oldestMessageId = msgs[0]._id;
+        }
+      });
+
+
     </script>
   </body>
 </html>

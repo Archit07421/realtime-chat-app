@@ -10,10 +10,11 @@ const messageSchema = new mongoose.Schema({
 
     createdAt:{
         type:Date,
-        default:Date.now
+        default:Date.now,
+        index:true
     }
 });
 
-messageSchema.index({ createdAt: 1 });
+
 
 module.exports = mongoose.model("Message",messageSchema);
